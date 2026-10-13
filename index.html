@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Highway Horizon 3D - Ultimate Scenic Supercar Racing</title>
+  <meta name="description" content="High fidelity professional 3D straight highway racing game with scenic nature, realistic environments, supercar garage, dynamic traffic, and weather.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Three.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <!-- 3D Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Speed Lines / Vignette Overlay -->
+  <div id="speed-overlay" class="speed-lines"></div>
+  <div id="rain-canvas-overlay"></div>
+  <div id="camera-flash-overlay" class="flash-overlay"></div>
+
+  <!-- HUD Overlay -->
+  <div id="hud" class="hud-container">
+    <!-- Top Bar: Scores & Stats -->
+    <div class="hud-top-bar">
+      <div class="stat-card glass-panel">
+        <span class="stat-label">SCORE</span>
+        <span id="score-val" class="stat-value">0</span>
+      </div>
+      <div class="stat-card glass-panel">
+        <span class="stat-label">DISTANCE</span>
+        <span id="dist-val" class="stat-value">0 <small>m</small></span>
+      </div>
+      <div id="time-attack-card" class="stat-card glass-panel timer-card hidden">
+        <span class="stat-label">TIME REMAINING</span>
+        <span id="timer-val" class="stat-value">60.0 <small>s</small></span>
+      </div>
+      <div class="stat-card glass-panel mult-card">
+        <span class="stat-label">STREAK</span>
+        <span id="mult-val" class="stat-value">x1</span>
+      </div>
+      <div class="stat-card glass-panel best-score-card">
+        <span class="stat-label">BEST RECORD</span>
+        <span id="best-val" class="stat-value">0</span>
+      </div>
+    </div>
+
+    <!-- Center Combo & Announcement Banner -->
+    <div id="combo-banner" class="combo-banner">
+      <div id="combo-title" class="combo-title">CLOSE CALL!</div>
+      <div id="combo-points" class="combo-points">+250 PTS</div>
+    </div>
+
+    <!-- Speed Trap Radar Flash Banner -->
+    <div id="speed-trap-banner" class="speed-trap-banner">
+      <div class="trap-icon">📸 RADAR SPEED TRAP</div>
+      <div id="trap-speed-text" class="trap-text">RECORD: 215 KM/H!</div>
+      <div class="trap-bonus">+1,000 BONUS PTS</div>
+    </div>
+
+    <!-- Oncoming Danger Warning in Two-Way Mode -->
+    <div id="oncoming-warning" class="oncoming-warning-badge hidden">
+      ⚠️ WARNING: ONCOMING TRAFFIC LANE! (2X SCORE)
+    </div>
+
+    <!-- Quick Environment, Camera, Pause Controls -->
+    <div class="hud-quick-controls">
+      <div class="control-pill glass-panel">
+        <button id="env-sunny-btn" class="env-btn active" title="Day Sunny">☀️ Day</button>
+        <button id="env-sunset-btn" class="env-btn" title="Sunset">🌅 Sunset</button>
+        <button id="env-rain-btn" class="env-btn" title="Rain Storm">🌧️ Rain</button>
+        <button id="env-night-btn" class="env-btn" title="Cyber Night">🌙 Night</button>
+      </div>
+
+      <div class="control-pill glass-panel">
+        <button id="cam-toggle-btn" class="action-btn" title="Change Camera View (Key C)">🎥 <span id="cam-name">Chase</span></button>
+        <button id="audio-toggle-btn" class="action-btn" title="Toggle Sound">🔊 Music</button>
+        <button id="horn-btn" class="action-btn horn-btn-small" title="Horn (Key H)">📯 Horn</button>
+        <button id="pause-btn" class="action-btn pause-btn-small" title="Pause Game (Key ESC)">⏸️ Pause</button>
+      </div>
+    </div>
+
+    <!-- Bottom Dashboard: Left Dock (Nitro & Guide) | Center (Clear Road) | Right Dock (Speedometer) -->
+    <div class="hud-bottom-bar">
+      <!-- Left Dock: Nitro Booster & Pilot Guide -->
+      <div class="hud-left-dock">
+        <!-- Nitro Meter -->
+        <div class="nitro-gauge glass-panel">
+          <div class="nitro-header">
+            <span>⚡ NITRO BOOST</span>
+            <span id="nitro-percent">100%</span>
+          </div>
+          <div class="nitro-bar-track">
+            <div id="nitro-bar-fill" class="nitro-bar-fill"></div>
+          </div>
+          <div class="nitro-hint">Hold [SHIFT] or [BOOST] for NOS</div>
+        </div>
+
+        <!-- Compact Controls Guide -->
+        <div class="controls-guide glass-panel">
+          <div class="guide-title">PILOT CONTROLS</div>
+          <div class="guide-row"><span>Steer:</span> <b>◄ / ► Arrow Keys</b></div>
+          <div class="guide-row"><span>Drive:</span> <b>▲ Gas / ▼ Brake</b></div>
+          <div class="guide-row"><span>Boost:</span> <b>SHIFT (NOS)</b></div>
+        </div>
+      </div>
+
+      <!-- Center Spacer: Intentionally clear so player car and road are 100% visible -->
+      <div class="hud-center-spacer"></div>
+
+      <!-- Right Dock: Upgraded Next-Gen Animated Supercar Speedometer -->
+      <div id="speedometer-cluster" class="speedometer-cluster glass-panel">
+        <div class="speed-dial-wrap">
+          <svg viewBox="0 0 220 220" class="speedo-svg">
+            <defs>
+              <linearGradient id="speedoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#00f0ff" />
+                <stop offset="50%" stop-color="#00ff88" />
+                <stop offset="78%" stop-color="#ffb703" />
+                <stop offset="100%" stop-color="#ff0055" />
+              </linearGradient>
+              <filter id="speedoGlow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            <!-- Background Outer Glow Ring -->
+            <circle class="speedo-track-ring" cx="110" cy="110" r="92" />
+
+            <!-- Dark Track Arc -->
+            <circle class="speedo-bg-track" cx="110" cy="110" r="80" />
+
+            <!-- Dynamic Sweeping Fill Arc -->
+            <circle id="speed-indicator-arc" class="speedo-fill-arc" cx="110" cy="110" r="80" />
+
+            <!-- Radial Speed Scale Tick Labels -->
+            <g class="speedo-dial-labels">
+              <text x="44" y="166">0</text>
+              <text x="30" y="100">60</text>
+              <text x="68" y="48">120</text>
+              <text x="146" y="48">180</text>
+              <text x="186" y="100">240</text>
+              <text x="172" y="166">280</text>
+            </g>
+
+            <!-- Sweeping Neon Laser Needle -->
+            <g id="speed-needle-group" class="speedo-needle-group">
+              <line class="speedo-needle-line" x1="110" y1="110" x2="110" y2="34" />
+              <circle class="speedo-needle-tip" cx="110" cy="34" r="3.5" />
+            </g>
+
+            <!-- Center Cap Pivot -->
+            <circle class="speedo-hub-glow" cx="110" cy="110" r="16" />
+            <circle class="speedo-hub-core" cx="110" cy="110" r="9" />
+          </svg>
+
+          <!-- Core Digital Speed & Gear Display -->
+          <div class="speedo-core">
+            <div id="drive-mode-tag" class="speedo-mode-badge">SPORT</div>
+            <div class="speedo-main-num">
+              <span id="speed-num" class="speed-number">0</span>
+            </div>
+            <div class="speedo-unit-row">
+              <span class="speed-unit">KM/H</span>
+              <div class="gear-badge">
+                <span class="gear-tag-lbl">GEAR</span>
+                <span id="gear-val" class="gear-tag-num">1</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Animated Segmented RPM Bar -->
+        <div class="speedo-rpm-bar">
+          <div class="rpm-labels">
+            <span>TACHO RPM</span>
+            <span id="rpm-val-text">1.2K</span>
+          </div>
+          <div class="rpm-segments" id="rpm-segments">
+            <span class="rpm-seg" data-idx="0"></span>
+            <span class="rpm-seg" data-idx="1"></span>
+            <span class="rpm-seg" data-idx="2"></span>
+            <span class="rpm-seg" data-idx="3"></span>
+            <span class="rpm-seg" data-idx="4"></span>
+            <span class="rpm-seg" data-idx="5"></span>
+            <span class="rpm-seg" data-idx="6"></span>
+            <span class="rpm-seg" data-idx="7"></span>
+            <span class="rpm-seg" data-idx="8"></span>
+            <span class="rpm-seg" data-idx="9"></span>
+            <span class="rpm-seg warn" data-idx="10"></span>
+            <span class="rpm-seg danger" data-idx="11"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- On-Screen Gamepad Controls (always visible) -->
+  <div id="game-controls" class="game-controls">
+    <!-- Left cluster: Steering -->
+    <div class="ctrl-steer-group">
+      <button id="touch-left" class="ctrl-btn ctrl-steer" aria-label="Steer Left">
+        <span class="ctrl-icon">◀</span>
+        <span class="ctrl-label">LEFT</span>
+      </button>
+      <button id="touch-right" class="ctrl-btn ctrl-steer" aria-label="Steer Right">
+        <span class="ctrl-icon">▶</span>
+        <span class="ctrl-label">RIGHT</span>
+      </button>
+    </div>
+    <!-- Right cluster: Action -->
+    <div class="ctrl-action-group">
+      <button id="touch-brake" class="ctrl-btn ctrl-brake" aria-label="Brake">
+        <span class="ctrl-icon">⏹</span>
+        <span class="ctrl-label">BRAKE</span>
+      </button>
+      <button id="touch-nitro" class="ctrl-btn ctrl-nitro" aria-label="Nitro Boost">
+        <span class="ctrl-icon">🔥</span>
+        <span class="ctrl-label">BOOST</span>
+      </button>
+      <button id="touch-gas" class="ctrl-btn ctrl-gas" aria-label="Accelerate">
+        <span class="ctrl-icon">▲</span>
+        <span class="ctrl-label">GAS</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Legacy mobile-controls placeholder (kept for JS binding compatibility) -->
+  <div id="mobile-controls" style="display:none;"></div>
+
+  <!-- Game Start Menu Screen (Supercar Garage & Mode Selection) -->
+  <div id="start-screen" class="overlay-modal active">
+    <div class="modal-card glass-panel garage-modal-card">
+      <div class="game-badge">PROFESSIONAL 3D MOTORSPORT SIMULATOR</div>
+      <h1 class="game-title">HIGHWAY HORIZON</h1>
+      <p class="game-subtitle">Infinite Alpine Speedway &bull; Hyper Velocity &bull; Dynamic Traffic</p>
+
+      <!-- Game Mode Tabs -->
+      <div class="mode-selector-box">
+        <div class="selector-title">SELECT RACE MODE</div>
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="oneway">
+            <span class="mode-icon">🛣️</span>
+            <span class="mode-name">One-Way Cruise</span>
+            <span class="mode-sub">Standard Highway</span>
+          </button>
+          <button class="mode-tab" data-mode="twoway">
+            <span class="mode-icon">⚠️</span>
+            <span class="mode-name">Two-Way Traffic</span>
+            <span class="mode-sub">Oncoming Adrenaline (2x PTS)</span>
+          </button>
+          <button class="mode-tab" data-mode="timeattack">
+            <span class="mode-icon">⏱️</span>
+            <span class="mode-name">Time Attack</span>
+            <span class="mode-sub">Checkpoint Rush (+15s)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Supercar Showroom Garage -->
+      <div class="garage-selector-box">
+        <div class="selector-title">SELECT SUPERCAR</div>
+        <div class="car-selection-grid">
+          <!-- Car 1: Inferno GT -->
+          <div class="car-card active" data-car="inferno">
+            <div class="car-card-header">
+              <span class="car-tag">SUPERCAR</span>
+              <span class="car-name">INFERNO GT</span>
+            </div>
+            <div class="car-stats-mini">
+              <div class="stat-line"><span>Top Speed</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 82%;"></div></div><span>235 km/h</span></div>
+              <div class="stat-line"><span>Handling</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 85%;"></div></div><span>Balanced</span></div>
+              <div class="stat-line"><span>Nitro NOS</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 80%;"></div></div><span>Fast</span></div>
+            </div>
+          </div>
+
+          <!-- Car 2: Cyber Phantom -->
+          <div class="car-card" data-car="cyber">
+            <div class="car-card-header">
+              <span class="car-tag cyan">HYPER ELECTRIC</span>
+              <span class="car-name">CYBER PHANTOM</span>
+            </div>
+            <div class="car-stats-mini">
+              <div class="stat-line"><span>Top Speed</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 92%;"></div></div><span>255 km/h</span></div>
+              <div class="stat-line"><span>Handling</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 95%;"></div></div><span>Agile</span></div>
+              <div class="stat-line"><span>Nitro NOS</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 90%;"></div></div><span>Super</span></div>
+            </div>
+          </div>
+
+          <!-- Car 3: Viper Venom -->
+          <div class="car-card" data-car="venom">
+            <div class="car-card-header">
+              <span class="car-tag gold">V10 MUSCLE</span>
+              <span class="car-name">VIPER VENOM</span>
+            </div>
+            <div class="car-stats-mini">
+              <div class="stat-line"><span>Top Speed</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 98%;"></div></div><span>265 km/h</span></div>
+              <div class="stat-line"><span>Handling</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 78%;"></div></div><span>Raw Drift</span></div>
+              <div class="stat-line"><span>Nitro NOS</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 95%;"></div></div><span>Roaring</span></div>
+            </div>
+          </div>
+
+          <!-- Car 4: Apex Titan -->
+          <div class="car-card" data-car="titan">
+            <div class="car-card-header">
+              <span class="car-tag purple">ARMORED TRACK</span>
+              <span class="car-name">APEX TITAN</span>
+            </div>
+            <div class="car-stats-mini">
+              <div class="stat-line"><span>Top Speed</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 86%;"></div></div><span>245 km/h</span></div>
+              <div class="stat-line"><span>Handling</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 88%;"></div></div><span>Heavy Grip</span></div>
+              <div class="stat-line"><span>Armor</span><div class="mini-bar"><div class="mini-bar-fill" style="width: 100%;"></div></div><span>Shielded</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Paint Chip Palette -->
+        <div class="paint-palette">
+          <span class="paint-label">LIVERY COLOR:</span>
+          <div class="color-options">
+            <button class="color-chip active" data-color="#e62020" style="--c: #e62020;" title="Inferno Red"></button>
+            <button class="color-chip" data-color="#00d2ff" style="--c: #00d2ff;" title="Electric Cyan"></button>
+            <button class="color-chip" data-color="#ffb703" style="--c: #ffb703;" title="Sunset Gold"></button>
+            <button class="color-chip" data-color="#10b981" style="--c: #10b981;" title="Emerald Viper"></button>
+            <button class="color-chip" data-color="#a855f7" style="--c: #a855f7;" title="Neon Purple"></button>
+            <button class="color-chip" data-color="#0f172a" style="--c: #0f172a;" title="Midnight Stealth"></button>
+            <button class="color-chip" data-color="#ffffff" style="--c: #ffffff;" title="Alpine White"></button>
+          </div>
+        </div>
+      </div>
+
+      <button id="start-btn" class="primary-btn glow-btn">ENGAGE TRANSMISSION 🏎️</button>
+      <div class="start-hint">Controls: Arrow Keys ▲▼◄► &bull; Shift: NOS &bull; Space: Brake &bull; ESC: Pause</div>
+    </div>
+  </div>
+
+  <!-- Pause Menu Screen -->
+  <div id="pause-modal" class="overlay-modal">
+    <div class="modal-card glass-panel pause-card">
+      <div class="game-badge">SIMULATION PAUSED</div>
+      <h2 class="pause-title">GAME PAUSED</h2>
+
+      <div class="pause-stats-list">
+        <div class="pause-stat-item"><span>Current Speed:</span> <b id="pause-speed">0 km/h</b></div>
+        <div class="pause-stat-item"><span>Distance Covered:</span> <b id="pause-dist">0 m</b></div>
+        <div class="pause-stat-item"><span>Score Accumulated:</span> <b id="pause-score">0</b></div>
+      </div>
+
+      <div class="pause-actions">
+        <button id="resume-btn" class="primary-btn glow-btn">RESUME RACE ▶</button>
+        <button id="pause-restart-btn" class="secondary-btn">RESTART 🔁</button>
+        <button id="garage-menu-btn" class="secondary-btn">GARAGE & MODES 🏁</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="game-over-screen" class="overlay-modal">
+    <div class="modal-card glass-panel crash-card">
+      <div class="crash-badge">HIGH SPEED COLLISION</div>
+      <h2 class="crash-title">WRECKED ON HIGHWAY</h2>
+
+      <div class="game-stats-grid">
+        <div class="stat-box">
+          <span class="box-label">FINAL SCORE</span>
+          <span id="final-score" class="box-val">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="box-label">DISTANCE</span>
+          <span id="final-dist" class="box-val">0 m</span>
+        </div>
+        <div class="stat-box">
+          <span class="box-label">MAX VELOCITY</span>
+          <span id="final-speed" class="box-val">0 km/h</span>
+        </div>
+        <div class="stat-box">
+          <span class="box-label">CLOSE CALL COMBOS</span>
+          <span id="final-combos" class="box-val">0</span>
+        </div>
+      </div>
+
+      <div id="new-record-tag" class="new-record-tag hidden">🏆 NEW WORLD RECORD!</div>
+
+      <div class="modal-buttons">
+        <button id="restart-btn" class="primary-btn glow-btn">RACE AGAIN 🔁</button>
+        <button id="gameover-garage-btn" class="secondary-btn">CHANGE SUPERCAR 🏎️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/textures.js"></script>
+  <script src="js/car.js"></script>
+  <script src="js/environment.js"></script>
+  <script src="js/traffic.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
